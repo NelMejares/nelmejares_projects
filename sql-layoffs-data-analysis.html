@@ -1,0 +1,355 @@
+<!DOCTYPE HTML>
+<!--
+	Massively by HTML5 UP
+	html5up.net | @ajlkn
+	Free for personal and commercial use under the CCA 3.0 license (html5up.net/license)
+-->
+<html>
+	<head>
+		<title>Nel Mejares - Project</title>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+		<link rel="stylesheet" href="assets/css/main.css" />
+		<noscript><link rel="stylesheet" href="assets/css/noscript.css" /></noscript>
+	</head>
+	<body class="is-preload">
+
+		<!-- Wrapper -->
+			<div id="wrapper">
+
+				<!-- Header -->
+					<header id="header">
+						<a href="index.html" class="logo">Nel Mejares</a>
+					</header>
+
+				<!-- Nav -->
+					<nav id="nav">
+						<ul class="links">
+							<li class="active"><a href="sql-layoffs-data-analysis.html">Project</a></li>
+						</ul>
+						<ul class="icons">
+							<li><a href="https://www.linkedin.com/in/nelmejares" target="_blank" class="icon brands fa-linkedin"><span class="label">LinkedIn</span></a></li>
+							<li><a href="https://github.com/NelMejares" target="_blank" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
+						</ul>
+					</nav>
+
+				<!-- Main -->
+					<div id="main">
+
+						<!-- Post -->
+							<section class="post">
+								<header class="major">
+									<h1>SQL Data Analysis <br />
+										Layoffs Data</h1>
+									<hr />
+								</header>
+<h2>Data Cleaning</h2>
+
+<li>Remove Duplicate</li>
+<li>Standardize Data</li>
+<li>Null Values or Blank Values</li>
+<li>Remove Columns</li>
+<br />
+<pre><code>SELECT *
+FROM layoffs;
+</pre></code>
+<img src="images/sql-image/1.png" class="image fit">
+<p>Creating a backup table</p>
+<pre><code>CREATE TABLE layoffs_stagging
+LIKE layoffs;
+
+INSERT layoffs_stagging
+SELECT *
+FROM layoffs;
+
+SELECT *
+FROM layoffs_stagging;
+</pre></code>
+
+<p>Remove duplicate</p>
+<pre><code>SELECT *,
+ROW_NUMBER () OVER (PARTITION BY company, location, industry, total_laid_off,
+percentage_laid_off, 'date', stage, country, funds_raised_millions) AS row_num
+FROM layoffs_stagging;
+</pre></code>
+<img src="images/sql-image/2.png" class="image fit">
+<pre><code>WITH dup_cte AS
+(
+SELECT *,
+ROW_NUMBER () OVER (PARTITION BY company, location, industry, total_laid_off,
+percentage_laid_off, 'date', stage, country, funds_raised_millions) AS row_num
+FROM layoffs_stagging
+)
+SELECT *
+FROM dup_cte
+WHERE row_num > 1;
+</pre></code>
+<img src="images/sql-image/3.png" class="image fit">
+<p>Creating new table for row_num to delete duplicate</p>
+<pre><code>CREATE TABLE `layoffs_stagging2` 
+(
+`company` text,
+`location` text,
+`industry` text,
+`total_laid_off` int DEFAULT NULL,
+`percentage_laid_off` text,
+`date` text,
+`stage` text,
+`country` text,
+`funds_raised_millions` int DEFAULT NULL,
+`row_num` int
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO layoffs_stagging2
+SELECT *,
+ROW_NUMBER() OVER(PARTITION BY company, location, industry, total_laid_off,
+percentage_laid_off, 'date', stage, country, funds_raised_millions) AS row_num
+FROM layoffs_stagging;
+</pre></code>
+<img src="images/sql-image/4.png" class="image fit">
+<pre><code>SELECT *
+FROM layoffs_stagging2
+WHERE row_num > 1;
+</pre></code>
+<img src="images/sql-image/5.png" class="image fit">
+<pre><code>DELETE
+FROM layoffs_stagging2
+WHERE row_num > 1;
+</pre></code>
+<img src="images/sql-image/4.png" class="image fit">
+<p>Removing white space</p>
+<pre><code>SELECT company, (TRIM(company))
+FROM layoffs_stagging2;
+
+UPDATE layoffs_stagging2
+SET company = TRIM(company);
+</pre></code>
+<img src="images/sql-image/6.png" class="image fit">
+<p>Setting Crypto as default value</p>
+<pre><code>SELECT DISTINCT industry
+FROM layoffs_stagging2
+ORDER BY 1;
+</pre></code>
+<img src="images/sql-image/7.png" class="image fit">
+<pre><code>SELECT *
+FROM layoffs_stagging2
+WHERE industry LIKE "Crypto%";
+</pre></code>
+<img src="images/sql-image/8.png" class="image fit">
+<pre><code>UPDATE layoffs_stagging2
+SET industry = 'Crypto'
+WHERE industry LIKE 'Crypto%';
+</pre></code>
+<img src="images/sql-image/9.png" class="image fit">
+<p>Removing extra characters</p>
+<pre><code>SELECT DISTINCT country
+FROM layoffs_stagging2
+ORDER BY 1;
+</pre></code>
+<img src="images/sql-image/10.png" class="image fit">
+<pre><code>SELECT DISTINCT country, TRIM(TRAILING '.' FROM country)
+FROM layoffs_stagging2
+ORDER BY 1;
+</pre></code>
+<img src="images/sql-image/11.png" class="image fit">
+<pre><code>UPDATE layoffs_stagging2
+SET country = TRIM(TRAILING '.' FROM country)
+WHERE country LIKE 'United States%';
+</pre></code>
+<img src="images/sql-image/12.png" class="image fit">
+<p>Changing date format</p>
+<pre><code>SELECT `date`,
+STR_TO_DATE(`date`, '%m/%d/%Y')
+FROM layoffs_stagging2;
+
+UPDATE layoffs_stagging2
+SET `date` = STR_TO_DATE(`date`, '%m/%d/%Y');
+</pre></code>
+<img src="images/sql-image/13.png" class="image fit">
+<p>Changing date format from text to date</p>
+<pre><code>ALTER TABLE layoffs_stagging2
+MODIFY COLUMN `date` DATE;
+</pre></code>
+<p>Checking for null values</p>
+<pre><code>SELECT *
+FROM layoffs_stagging2
+WHERE total_laid_off IS NULL
+AND percentage_laid_off IS NULL;
+</pre></code>
+<img src="images/sql-image/14.png" class="image fit">
+<pre><code>SELECT *
+FROM layoffs_stagging2
+WHERE industry IS NULL
+OR industry = '';
+</pre></code>
+<img src="images/sql-image/15.png" class="image fit">
+<p>Adding industry from same company</p>
+<pre><code>SELECT *
+FROM layoffs_stagging2
+WHERE company = 'Airbnb';
+</pre></code>
+<img src="images/sql-image/16.png" class="image fit">
+<pre><code>UPDATE layoffs_stagging2
+SET industry = NULL
+WHERE industry = '';
+
+SELECT *
+FROM layoffs_stagging2 t1
+JOIN layoffs_stagging2 t2
+ON t1.company = t2.company
+WHERE (t1.industry IS NULL)
+AND t2.industry IS NOT NULL;
+
+UPDATE layoffs_stagging2 t1
+JOIN layoffs_stagging2 t2
+ON t1.company = t2.company
+SET t1.industry = t2.industry
+WHERE t1.industry IS NULL
+AND t2.industry IS NOT NULL;
+</pre></code>
+<img src="images/sql-image/17.png" class="image fit">
+<p>Removing data where values is null</p>
+<pre><code>DELETE
+FROM layoffs_stagging2
+WHERE total_laid_off IS NULL
+AND percentage_laid_off IS NULL;
+
+SELECT *
+FROM layoffs_stagging2;
+</pre></code>
+<img src="images/sql-image/18.png" class="image fit">
+<p>Drop the row_num column</p>
+<pre><code>ALTER TABLE layoffs_stagging2
+DROP COLUMN row_num;
+</pre></code>
+<img src="images/sql-image/19.png" class="image fit">
+
+								<br />
+								<h2>Data Analysis</h2>		
+<pre><code>SELECT *
+FROM layoffs_stagging2;
+</pre></code>
+<img src="images/sql-image/20.png" class="image fit">
+<pre><code>SELECT company, SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY company
+ORDER BY 2 DESC;
+</pre></code>
+<img src="images/sql-image/21.png" class="image fit">
+<pre><code>SELECT MIN(`date`), MAX(`date`)
+FROM layoffs_stagging2;
+</pre></code>
+<img src="images/sql-image/22.png" class="image fit">
+<p>Total laid off by Industry</p>
+<pre><code>SELECT industry, SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY industry
+ORDER BY 2 DESC;
+</pre></code>
+<img src="images/sql-image/23.png" class="image fit">
+<p>Total laid off by Country</p>
+<pre><code>SELECT country, SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY country
+ORDER BY 2 DESC;
+</pre></code>
+<img src="images/sql-image/24.png" class="image fit">
+<p>Total laid off by Year</p>
+<pre><code>SELECT YEAR(`date`), SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY YEAR(`date`)
+ORDER BY 1 DESC;
+</pre></code>
+<img src="images/sql-image/25.png" class="image fit">
+<p>Total laid off by Stage</p>
+<pre><code>SELECT stage, SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY stage
+ORDER BY 2 DESC;
+</pre></code>
+<img src="images/sql-image/26.png" class="image fit">
+<p>Total laid off by Month</p>
+<pre><code>SELECT SUBSTRING(`date`, 1, 7) AS `MONTH`, SUM(total_laid_off) AS total_off
+FROM layoffs_stagging2
+WHERE SUBSTRING(`date`, 1, 7) IS NOT NULL
+GROUP BY `MONTH`
+ORDER BY 1 ASC;
+</pre></code>
+<img src="images/sql-image/27.png" class="image fit">
+<p>Total laid off by Company per Year</p>
+<pre><code>SELECT company, YEAR(`date`), SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY company, YEAR(`date`)
+ORDER BY 3 DESC;
+</pre></code>
+<img src="images/sql-image/28.png" class="image fit">
+<p>Ranking company thru years by total laid off</p>
+<pre><code>WITH Company_year (company, years, total_laid_off) AS
+(
+SELECT company, YEAR(`date`), SUM(total_laid_off)
+FROM layoffs_stagging2
+GROUP BY company, YEAR(`date`)
+), Company_Year_Rank  AS
+(SELECT *, 
+DENSE_RANK() OVER (PARTITION BY years ORDER BY total_laid_off DESC) AS Ranking
+FROM Company_year
+WHERE years IS NOT NULL
+)
+SELECT *
+FROM Company_Year_Rank
+WHERE Ranking <= 5;
+</pre></code>
+<img src="images/sql-image/29.png" class="image fit">
+
+
+								<br />
+								<h3>Project Files</h3>		
+								<hr />
+								<p><a href="https://github.com/NelMejares/SQL_Data_Analysis/tree/main/SQL%20Data%20-%20Layoffs"  class="alt" target="_blank">https://github.com/NelMejares/SQL_Data_Analysis/Layoffs</a></p>
+							</section>
+					</div>
+
+				<!-- Footer -->
+				<footer id="footer">
+					<section class="split contact">
+						<section class="alt">
+							<h3>Address</h3>
+							<p>NCR, Philippines<br /></p>
+						</section>
+						<section>
+							<h3>Phone</h3>
+							<p>(+63) 9283767445</p>
+						</section>
+						<section>
+							<h3>Email</h3>
+							<p>mejaresnel@gmail.com</p>
+						</section>
+						<section>
+							<h3>Social</h3>
+							<ul class="icons alt">
+								<li><a href="https://www.linkedin.com/in/nelmejares" target="_blank" class="icon brands fa-linkedin"><span class="label">LinkedIn</span></a></li>
+								<li><a href="https://github.com/NelMejares" target="_blank" class="icon brands fa-github"><span class="label">GitHub</span></a></li>
+							</ul>
+						</section>
+					</section>
+				</footer>
+
+				<!-- Copyright -->
+					<div id="copyright">
+						<!--<ul><li>&copy; Untitled</li><li>Design: <a href="https://html5up.net">HTML5 UP</a></li></ul>-->
+					</div>
+
+			</div>
+
+		<!-- Scripts -->
+			<script src="assets/js/jquery.min.js"></script>
+			<script src="assets/js/jquery.scrollex.min.js"></script>
+			<script src="assets/js/jquery.scrolly.min.js"></script>
+			<script src="assets/js/browser.min.js"></script>
+			<script src="assets/js/breakpoints.min.js"></script>
+			<script src="assets/js/util.js"></script>
+			<script src="assets/js/main.js"></script>
+
+	</body>
+</html>
